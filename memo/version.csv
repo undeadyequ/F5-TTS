@@ -1,0 +1,4 @@
+
+
+F5TTS_v1_Small_energy_v3: beta=10, energy on phonemes greater than q95
+F5TTS_v1_Small_energy_v4: beta=1, energy on phonemes greater than q95

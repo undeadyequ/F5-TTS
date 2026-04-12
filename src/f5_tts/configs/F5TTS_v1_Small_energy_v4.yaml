@@ -18,7 +18,7 @@ optim:
   bnb_optimizer: False  # use bnb 8bit AdamW optimizer or not
 
 model:
-  name: F5TTS_v1_Small  # model name
+  name: F5TTS_v4_Small_energy_spkIndepOOD_mu  # model name
   tokenizer: char  # tokenizer type
   tokenizer_path: null  # if 'custom' tokenizer, define the path want to use (should be vocab.txt)
   backbone: DiT
@@ -56,6 +56,16 @@ ckpts:
   keep_last_n_checkpoints: -1  # -1 to keep all, 0 to not save intermediate, > 0 to keep last N checkpoints
   last_per_updates: 5000  # save last checkpoint per updates
   save_dir: ckpts/${model.name}_${model.mel_spec.mel_spec_type}_${model.tokenizer}_${datasets.name}
+
+energy:
+  F0_path: "third_party/Utils/JDC/bst.t7"
+  ASR_config: "third_party/Utils/ASR/config.yml"
+  ASR_path: "third_party/Utils/ASR/epoch_00080.pth"
+  energy_function_type: "mu"   # "mu" | "kappa" | "mu_kappa"
+  mu_star: 21.69               # global fallback OOD pitch target (Hz); ignored per-sample when spk_clusters_path is set
+  kappa_star: 1.60             # global fallback OOD curvature target; ignored per-sample when spk_clusters_path is set
+  beta: 1.0                   # energy softmax temperature
+  spk_clusters_path: "/home/rosen/Project/F5-TTS/data/LibriTTS_100_360_500_char/spk_clusters_mu.json"  # # no cluster file → use constant fallback
 
 
 # 1.2M updates
