@@ -28,7 +28,7 @@ from torch.utils.data import DataLoader, SequentialSampler
 from tqdm import tqdm
 
 from f5_tts.model import Trainer
-from f5_tts.model.cefm import CEFM
+from f5_tts.model.cefm_v2 import CEFM
 from f5_tts.model.dataset import DynamicBatchSampler, load_dataset
 from f5_tts.model.dataset_energy import EnergyDataset, collate_fn_energy
 from f5_tts.model.utils import exists, get_tokenizer
@@ -227,6 +227,7 @@ class EnergyTrainer(Trainer):
 
         for epoch in range(skipped_epoch, self.epochs):
             self.model.train()
+            ess_epoch = []  # accumulate per-batch ESS for epoch-level stats
             if exists(resumable_with_seed) and epoch == skipped_epoch:
                 progress_bar_initial = math.ceil(skipped_batch / self.grad_accumulation_steps)
                 current_dataloader = skipped_dataloader
@@ -293,7 +294,9 @@ class EnergyTrainer(Trainer):
                 if self.accelerator.is_local_main_process:
                     log_dict = {"loss": loss.item(), "lr": self.scheduler.get_last_lr()[0]}
                     if actual_ess is not None:
-                        log_dict["ess"] = actual_ess.item()
+                        ess_val = actual_ess.item()
+                        log_dict["ess"] = ess_val
+                        ess_epoch.append(ess_val)
                     self.accelerator.log(log_dict, step=global_update)
                 if self.logger == "tensorboard" and self.accelerator.is_main_process:
                     self.writer.add_scalar("loss", loss.item(), global_update)
@@ -338,6 +341,14 @@ class EnergyTrainer(Trainer):
                             f"{log_samples_path}/update_{global_update}_ref.wav", ref_audio, target_sample_rate
                         )
                         self.model.train()
+
+            # Log epoch-level ESS stats
+            if self.accelerator.is_local_main_process and ess_epoch:
+                import statistics
+                self.accelerator.log({
+                    "ess_epoch_mean":   sum(ess_epoch) / len(ess_epoch),
+                    "ess_epoch_median": statistics.median(ess_epoch),
+                }, step=global_update)
 
         self.save_checkpoint(global_update, last=True)
         self.accelerator.end_training()

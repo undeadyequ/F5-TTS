@@ -494,15 +494,29 @@ def infer_batch_process(
 
         # inference
         with torch.inference_mode():
-            generated, _ = model_obj.sample(
-                cond=audio,
-                text=final_text_list,
-                duration=duration,
-                steps=nfe_step,
-                cfg_strength=cfg_strength,
-                sway_sampling_coef=sway_sampling_coef,
-            )
-            del _
+            if False:
+                generated, _ = model_obj.sample(
+                    cond=audio,
+                    text=final_text_list,
+                    duration=duration,
+                    steps=nfe_step,
+                    cfg_strength=cfg_strength,
+                    sway_sampling_coef=sway_sampling_coef,
+                )
+                del _
+            if True:
+                generated, *_ = model_obj.sde_sample(
+                    cond=audio,
+                    text=final_text_list,
+                    duration=duration,
+                    steps=nfe_step,
+                    cfg_strength=cfg_strength,
+                    sway_sampling_coef=sway_sampling_coef,
+                    noise_level = 0.7,
+                    sde_type = "cps",
+                )
+                del _
+
 
             generated = generated.to(torch.float32)  # generated mel spectrogram
             generated = generated[:, ref_audio_len:, :]
@@ -594,8 +608,6 @@ def infer_batch_process(
 
 
 # remove silence from generated wav
-
-
 def remove_silence_for_generated_wav(filename):
     aseg = AudioSegment.from_file(filename)
     non_silent_segs = silence.split_on_silence(
@@ -607,10 +619,7 @@ def remove_silence_for_generated_wav(filename):
     aseg = non_silent_wave
     aseg.export(filename, format="wav")
 
-
 # save spectrogram
-
-
 def save_spectrogram(spectrogram, path):
     plt.figure(figsize=(12, 4))
     plt.imshow(spectrogram, origin="lower", aspect="auto")
